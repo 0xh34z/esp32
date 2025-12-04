@@ -18,6 +18,9 @@
 #include "esp_event.h"
 #include "esp_timer.h"
 #include "nvs_flash.h"
+#include "pcap_serializer.h"
+#include "hccapx_serializer.h"
+#include "../components/webserver/file_manager.h"
 #include "nvs.h"
 
 #include "attack_pmkid.h"
@@ -144,6 +147,25 @@ esp_err_t attack_save_results_to_flash() {
     }
 
     nvs_close(nvs_handle);
+
+    // Additionally save PCAP and HCCAPX files to SPIFFS
+    // Save PCAP file if data is available
+    uint8_t *pcap_buffer = pcap_serializer_get_buffer();
+    unsigned pcap_size = pcap_serializer_get_size();
+    if (pcap_buffer != NULL && pcap_size > 0) {
+        if (file_manager_save_pcap(pcap_buffer, pcap_size) != ESP_OK) {
+            ESP_LOGW(TAG, "Failed to save PCAP file to SPIFFS");
+        }
+    }
+
+    // Save HCCAPX file if data is available
+    hccapx_t *hccapx = hccapx_serializer_get();
+    if (hccapx != NULL) {
+        if (file_manager_save_hccapx((uint8_t *)hccapx, sizeof(hccapx_t), hccapx->essid, hccapx->essid_len) != ESP_OK) {
+            ESP_LOGW(TAG, "Failed to save HCCAPX file to SPIFFS");
+        }
+    }
+
     return err;
 }
 

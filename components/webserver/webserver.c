@@ -22,6 +22,7 @@
 #include "attack.h"
 #include "pcap_serializer.h"
 #include "hccapx_serializer.h"
+#include "file_manager.h"
 
 #include "pages/page_index.h"
 
@@ -225,11 +226,158 @@ static httpd_uri_t uri_capture_hccapx_get = {
 };
 //@}
 
+/**
+ * @brief Handlers for \c /results endpoint
+ *
+ * This endpoint returns a list of saved result files from SPIFFS
+ * Response format: array of file info structures containing filename, size, and timestamp
+ * @param req
+ * @return esp_err_t
+ * @{
+ */
+static esp_err_t uri_results_get_handler(httpd_req_t *req) {
+    ESP_LOGD(TAG, "Listing saved result files...");
+
+    file_info_t files[32];
+    int file_count = file_manager_list_files(files, 32);
+
+    if (file_count < 0) {
+        ESP_LOGE(TAG, "Failed to list files");
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Failed to list files");
+        return ESP_FAIL;
+    }
+
+    ESP_ERROR_CHECK(httpd_resp_set_type(req, HTTPD_TYPE_OCTET));
+
+    // Send file count first (4 bytes)
+    uint32_t count = (uint32_t)file_count;
+    ESP_ERROR_CHECK(httpd_resp_send_chunk(req, (char *)&count, sizeof(uint32_t)));
+
+    // Send file info for each file
+    for (int i = 0; i < file_count; i++) {
+        // Filename (128 bytes)
+        ESP_ERROR_CHECK(httpd_resp_send_chunk(req, files[i].filename, 128));
+        // File size (4 bytes)
+        ESP_ERROR_CHECK(httpd_resp_send_chunk(req, (char *)&files[i].size, sizeof(uint32_t)));
+        // Timestamp (4 bytes)
+        ESP_ERROR_CHECK(httpd_resp_send_chunk(req, (char *)&files[i].timestamp, sizeof(uint32_t)));
+    }
+
+    return httpd_resp_send_chunk(req, NULL, 0);
+}
+
+static httpd_uri_t uri_results_get = {
+    .uri = "/results",
+    .method = HTTP_GET,
+    .handler = uri_results_get_handler,
+    .user_ctx = NULL
+};
+//@}
+
+/**
+ * @brief Handlers for \c /results/{filename} endpoint
+ *
+ * This endpoint serves a specific saved result file from SPIFFS
+ * @param req
+ * @return esp_err_t
+ * @{
+ */
+static esp_err_t uri_results_download_get_handler(httpd_req_t *req) {
+    // Extract filename from URI path
+    char filename[128] = {0};
+    size_t uri_len = strlen(req->uri);
+
+    // URI format: /results/filename.ext
+    if (uri_len > 9) { // "/results/" = 9 characters
+        strncpy(filename, req->uri + 9, sizeof(filename) - 1);
+    }
+
+    if (filename[0] == '\0') {
+        ESP_LOGE(TAG, "No filename provided");
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "No filename provided");
+        return ESP_FAIL;
+    }
+
+    ESP_LOGD(TAG, "Serving result file: %s", filename);
+
+    uint32_t file_size = 0;
+    uint8_t *file_buffer = file_manager_get_file(filename, &file_size);
+
+    if (file_buffer == NULL) {
+        ESP_LOGE(TAG, "Failed to load file: %s", filename);
+        httpd_resp_send_err(req, HTTPD_404_NOT_FOUND, "File not found");
+        return ESP_FAIL;
+    }
+
+    ESP_ERROR_CHECK(httpd_resp_set_type(req, HTTPD_TYPE_OCTET));
+    ESP_ERROR_CHECK(httpd_resp_send(req, (char *)file_buffer, file_size));
+
+    free(file_buffer);
+    return ESP_OK;
+}
+
+static httpd_uri_t uri_results_download_get = {
+    .uri = "/results/*",
+    .method = HTTP_GET,
+    .handler = uri_results_download_get_handler,
+    .user_ctx = NULL
+};
+//@}
+
+/**
+ * @brief Handlers for \c /results/{filename} endpoint (DELETE)
+ *
+ * This endpoint deletes a specific saved result file from SPIFFS
+ * @param req
+ * @return esp_err_t
+ * @{
+ */
+static esp_err_t uri_results_delete_handler(httpd_req_t *req) {
+    // Extract filename from URI path
+    char filename[128] = {0};
+    size_t uri_len = strlen(req->uri);
+
+    // URI format: /results/filename.ext
+    if (uri_len > 9) { // "/results/" = 9 characters
+        strncpy(filename, req->uri + 9, sizeof(filename) - 1);
+    }
+
+    if (filename[0] == '\0') {
+        ESP_LOGE(TAG, "No filename provided");
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "No filename provided");
+        return ESP_FAIL;
+    }
+
+    ESP_LOGD(TAG, "Deleting result file: %s", filename);
+
+    esp_err_t ret = file_manager_delete_file(filename);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to delete file: %s", filename);
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Failed to delete file");
+        return ESP_FAIL;
+    }
+
+    return httpd_resp_send(req, NULL, 0);
+}
+
+static httpd_uri_t uri_results_delete = {
+    .uri = "/results/*",
+    .method = HTTP_DELETE,
+    .handler = uri_results_delete_handler,
+    .user_ctx = NULL
+};
+//@}
+
 void webserver_run(){
     ESP_LOGD(TAG, "Running webserver");
 
+    // Initialize file manager for SPIFFS
+    if (file_manager_init() != ESP_OK) {
+        ESP_LOGW(TAG, "File manager initialization failed, results won't be saved to SPIFFS");
+    }
+
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
-    config.max_uri_handlers = 8;
+    config.max_uri_handlers = 11;
     config.stack_size = 8192;
     httpd_handle_t server = NULL;
 
@@ -246,6 +394,9 @@ void webserver_run(){
     ESP_ERROR_CHECK(httpd_register_uri_handler(server, &uri_status_get));
     ESP_ERROR_CHECK(httpd_register_uri_handler(server, &uri_capture_pcap_get));
     ESP_ERROR_CHECK(httpd_register_uri_handler(server, &uri_capture_hccapx_get));
+    ESP_ERROR_CHECK(httpd_register_uri_handler(server, &uri_results_get));
+    ESP_ERROR_CHECK(httpd_register_uri_handler(server, &uri_results_download_get));
+    ESP_ERROR_CHECK(httpd_register_uri_handler(server, &uri_results_delete));
     
     ESP_LOGI(TAG, "Webserver started successfully");
 }
