@@ -1,0 +1,66 @@
+name: Build ESP32 Project
+
+on:
+  push:
+    branches: [ master, develop ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        submodules: 'recursive'
+    
+    - name: Setup ESP-IDF
+      uses: espressif/esp-idf-ci-action@v1
+      with:
+        esp_idf_version: v4.4
+        target: esp32
+    
+    - name: Build project
+      run: |
+        . $IDF_PATH/export.sh
+        idf.py build
+    
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: esp32-wifi-penetration-tool
+        path: |
+          build/bootloader/bootloader.bin
+          build/partition_table/partition-table.bin
+          build/*.bin
+          build/*.elf
+          build/*.map
+        retention-days: 30
+    
+    - name: Check for warnings
+      run: |
+        . $IDF_PATH/export.sh
+        idf.py build 2>&1 | tee build_log.txt
+        if grep -i "warning" build_log.txt; then
+          echo "Build contains warnings"
+          exit 0
+        fi
+
+  lint:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Check code formatting
+      run: |
+        echo "Checking for trailing whitespaces..."
+        ! git grep -I --line-number --perl-regexp '\s+$' -- '*.c' '*.h' '*.cpp' || echo "Found trailing whitespaces"
+        
+    - name: Check for TODO/FIXME comments
+      run: |
+        echo "Checking for TODO/FIXME comments..."
+        git grep -I --line-number -E 'TODO|FIXME' -- '*.c' '*.h' || echo "No TODOs found"

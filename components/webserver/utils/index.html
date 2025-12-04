@@ -1,75 +1,556 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>ESP32 Management AP</title>
+    <title>ESP32 Wi-Fi Penetration Tool</title>
     <style>
-        body {
-            width: fit-content;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
-        table, tr, th {
-            border: 1px solid;
-            border-collapse: collapse;
+        
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --success-color: #27ae60;
+            --danger-color: #e74c3c;
+            --warning-color: #f39c12;
+            --light-bg: #ecf0f1;
+            --dark-bg: #34495e;
+            --text-color: #2c3e50;
+            --border-radius: 8px;
+            --shadow: 0 2px 10px rgba(0,0,0,0.1);
+            --shadow-hover: 0 4px 20px rgba(0,0,0,0.15);
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: var(--text-color);
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+        
+        header {
+            background: var(--primary-color);
+            color: white;
+            padding: 30px;
             text-align: center;
         }
-        th, td {
-            padding:10px;
+        
+        header h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+            font-weight: 600;
         }
-        tr:hover, tr.selected {
-            background-color: lightblue;
-            cursor:pointer;
+        
+        header p {
+            opacity: 0.9;
+            font-size: 0.95em;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .alert {
+            padding: 15px 20px;
+            border-radius: var(--border-radius);
+            margin-bottom: 20px;
+            display: none;
+            animation: slideDown 0.3s ease-out;
+        }
+        
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .alert-error {
+            background: #fee;
+            border-left: 4px solid var(--danger-color);
+            color: var(--danger-color);
+        }
+        
+        .alert-info {
+            background: #e3f2fd;
+            border-left: 4px solid var(--secondary-color);
+            color: #1565c0;
+        }
+        
+        .alert-success {
+            background: #e8f5e9;
+            border-left: 4px solid var(--success-color);
+            color: #2e7d32;
+        }
+        
+        fieldset {
+            border: 2px solid var(--light-bg);
+            border-radius: var(--border-radius);
+            padding: 25px;
+            margin-bottom: 25px;
+            background: #fafafa;
+        }
+        
+        legend {
+            font-weight: 600;
+            color: var(--primary-color);
+            padding: 0 10px;
+            font-size: 1.1em;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: var(--primary-color);
+        }
+        
+        input[type="number"],
+        select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #ddd;
+            border-radius: var(--border-radius);
+            font-size: 1em;
+            transition: all 0.3s ease;
+            background: white;
+        }
+        
+        input[type="number"]:focus,
+        select:focus {
+            outline: none;
+            border-color: var(--secondary-color);
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+        }
+        
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: var(--border-radius);
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-block;
+            text-decoration: none;
+            text-align: center;
+        }
+        
+        .btn-primary {
+            background: var(--secondary-color);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-hover);
+        }
+        
+        .btn-success {
+            background: var(--success-color);
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: #229954;
+        }
+        
+        .btn-danger {
+            background: var(--danger-color);
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+        
+        .btn-secondary {
+            background: #95a5a6;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #7f8c8d;
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+            background: white;
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        thead {
+            background: var(--primary-color);
+            color: white;
+        }
+        
+        th {
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.85em;
+            letter-spacing: 0.5px;
+        }
+        
+        td {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        tbody tr {
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+        
+        tbody tr:hover {
+            background: #f8f9fa;
+            transform: scale(1.01);
+        }
+        
+        tbody tr.selected {
+            background: #e3f2fd !important;
+            border-left: 4px solid var(--secondary-color);
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #7f8c8d;
+        }
+        
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid var(--secondary-color);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .progress-container {
+            text-align: center;
+            padding: 40px;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: #ecf0f1;
+            border-radius: 15px;
+            overflow: hidden;
+            margin: 20px 0;
+            position: relative;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--secondary-color), var(--success-color));
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+        }
+        
+        .result-card {
+            background: white;
+            border: 2px solid var(--light-bg);
+            border-radius: var(--border-radius);
+            padding: 20px;
+            margin: 15px 0;
+        }
+        
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid var(--light-bg);
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+        
+        .badge-success {
+            background: var(--success-color);
+            color: white;
+        }
+        
+        .badge-warning {
+            background: var(--warning-color);
+            color: white;
+        }
+        
+        .badge-info {
+            background: var(--secondary-color);
+            color: white;
+        }
+        
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        
+        pre {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: var(--border-radius);
+            overflow-x: auto;
+            margin: 15px 0;
+        }
+        
+        pre code {
+            background: none;
+            color: inherit;
+            padding: 0;
+        }
+        
+        .download-links {
+            display: flex;
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .download-links a {
+            flex: 1;
+            padding: 15px;
+            background: var(--success-color);
+            color: white;
+            text-decoration: none;
+            border-radius: var(--border-radius);
+            text-align: center;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .download-links a:hover {
+            background: #229954;
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-hover);
+        }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .info-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: var(--border-radius);
+            border-left: 4px solid var(--secondary-color);
+        }
+        
+        .info-item label {
+            display: block;
+            font-size: 0.85em;
+            color: #7f8c8d;
+            margin-bottom: 5px;
+        }
+        
+        .info-item .value {
+            font-weight: 600;
+            color: var(--primary-color);
+            word-break: break-all;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+            
+            .content {
+                padding: 15px;
+            }
+            
+            header h1 {
+                font-size: 1.5em;
+            }
+            
+            table {
+                font-size: 0.9em;
+            }
+            
+            th, td {
+                padding: 10px 8px;
+            }
+            
+            .download-links {
+                flex-direction: column;
+            }
+            
+            .btn-group {
+                flex-direction: column;
+            }
+            
+            .btn {
+                width: 100%;
+            }
+        }
+        
+        .hidden {
+            display: none !important;
         }
     </style>
 </head>
 <body onLoad="getStatus()">
-    <h1>ESP32 Wi-Fi Penetration Tool</h1>
-    <section id="errors"></section>
-    <section id="loading">Loading... Please wait</section>
-    <section id="ready" style="display: none;">
-        <h2>Attack configuration</h2>
-        <form onSubmit="runAttack(); return false;">
-            <fieldset>
-                <legend>Select target</legend>
-                <table id="ap-list"></table>
-                <p>
-                    <button type="button" onClick="refreshAps()">Refresh</button>
-                </p>
-            </fieldset>
-            <fieldset>
-                <legend>Attack configuration</legend>
-                <p>
-                    <label for="attack_type">Attack type:</label>
-                    <select id="attack_type" onChange="updateConfigurableFields(this)" required>
-                        <option value="0" title="This type is not implemented yet." disabled>ATTACK_TYPE_PASSIVE</option>
-                        <option value="1">ATTACK_TYPE_HANDSHAKE</option>
-                        <option value="2" selected>ATTACK_TYPE_PMKID</option>
-                        <option value="3">ATTACK_TYPE_DOS</option>
-                    </select>
-                </p>
-                <p>
-                    <label for="attack_method">Attack method:</label>
-                    <select id="attack_method" required disabled>
-                        <option value="" selected disabled hidden>NOT AVAILABLE</option>
-                    </select>
-                </p>
-                <p>
-                    <label for="attack_timeout">Attack timeout (seconds):</label>
-                    <input type="number" min="0" max="255" id="attack_timeout" value="" required/>
-                </p>
-                <p>
-                    <button>Attack</button>
-                </p>
-            </fieldset>
-        </form>
-    </section>
-    <section id="running" style="display: none;">
-        Time elapsed: <span id="running-progress"></span>
-    </section>
-    <section id="result" style="display: none;">
-        <div id="result-meta">Loading result.. Please wait</div>
-        <div id="result-content"></div>
-        <button type="button" onClick="resetAttack()">New attack</button>
-    </section>
+    <div class="container">
+        <header>
+            <h1>ESP32 Wi-Fi Penetration Tool</h1>
+            <p>Professional Wi-Fi Security Testing Platform</p>
+        </header>
+        
+        <div class="content">
+            <div id="errors" class="alert alert-error"></div>
+            
+            <section id="loading" class="loading">
+                <div class="spinner"></div>
+                <p>Loading system status... Please wait</p>
+            </section>
+            
+            <section id="ready" class="hidden">
+                <h2 style="margin-bottom: 20px;">Attack Configuration</h2>
+                <form onSubmit="runAttack(); return false;">
+                    <fieldset>
+                        <legend>Select Target Network</legend>
+                        <div class="table-wrapper">
+                            <table id="ap-list">
+                                <thead>
+                                    <tr>
+                                        <th>SSID</th>
+                                        <th>BSSID</th>
+                                        <th>Signal</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                        <div class="btn-group" style="margin-top: 15px;">
+                            <button type="button" class="btn btn-primary" onClick="refreshAps()">
+                                Refresh Networks
+                            </button>
+                        </div>
+                    </fieldset>
+                    
+                    <fieldset>
+                        <legend>Attack Parameters</legend>
+                        <div class="form-group">
+                            <label for="attack_type">Attack Type:</label>
+                            <select id="attack_type" onChange="updateConfigurableFields(this)" required>
+                                <option value="0" title="This type is not implemented yet." disabled>Passive Monitoring</option>
+                                <option value="1">Handshake Capture</option>
+                                <option value="2" selected>PMKID Attack</option>
+                                <option value="3">Denial of Service</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="attack_method">Attack Method:</label>
+                            <select id="attack_method" required disabled>
+                                <option value="" selected disabled hidden>NOT AVAILABLE</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="attack_timeout">Attack Timeout (seconds):</label>
+                            <input type="number" min="5" max="255" id="attack_timeout" value="30" required/>
+                            <small style="color: #7f8c8d; margin-top: 5px; display: block;">
+                                Recommended: PMKID (5-10s), Handshake (60-120s), DoS (120s+)
+                            </small>
+                        </div>
+                        
+                        <div class="btn-group">
+                            <button class="btn btn-danger" type="submit">
+                                Launch Attack
+                            </button>
+                        </div>
+                    </fieldset>
+                </form>
+            </section>
+            
+            <section id="running" class="hidden">
+                <div class="progress-container">
+                    <h2 style="margin-bottom: 20px;">Attack In Progress</h2>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progress-fill" style="width: 0%;">
+                            <span id="running-progress">0/0s</span>
+                        </div>
+                    </div>
+                    <p style="color: #7f8c8d; margin-top: 15px;">
+                        Please wait... You may lose connection during the attack.
+                    </p>
+                </div>
+            </section>
+            
+            <section id="result" class="hidden">
+                <div class="result-card">
+                    <div class="result-header">
+                        <h2 id="result-title">Attack Results</h2>
+                        <div id="result-meta"></div>
+                    </div>
+                    <div id="result-content"></div>
+                </div>
+                <div class="btn-group">
+                    <button type="button" class="btn btn-primary" onClick="resetAttack()">
+                        New Attack
+                    </button>
+                </div>
+            </section>
+        </div>
+    </div>
     <script>
     var AttackStateEnum = { READY: 0, RUNNING: 1, FINISHED: 2, TIMEOUT: 3};
     var AttackTypeEnum = { ATTACK_TYPE_PASSIVE: 0, ATTACK_TYPE_HANDSHAKE: 1, ATTACK_TYPE_PMKID: 2, ATTACK_TYPE_DOS: 3};
@@ -82,6 +563,27 @@
     var time_elapsed = 0;
     var defaultResultContent = document.getElementById("result").innerHTML;
     var defaultAttackMethods = document.getElementById("attack_method").outerHTML;
+    
+    function showError(message) {
+        var errorEl = document.getElementById("errors");
+        errorEl.innerHTML = "Error: " + message;
+        errorEl.style.display = "block";
+        errorEl.className = "alert alert-error";
+        setTimeout(() => {
+            errorEl.style.display = "none";
+        }, 5000);
+    }
+    
+    function showSuccess(message) {
+        var errorEl = document.getElementById("errors");
+        errorEl.innerHTML = "Success: " + message;
+        errorEl.style.display = "block";
+        errorEl.className = "alert alert-success";
+        setTimeout(() => {
+            errorEl.style.display = "none";
+        }, 3000);
+    }
+    
     function getStatus() {
         var oReq = new XMLHttpRequest();
         oReq.onload = function() {
@@ -92,7 +594,6 @@
                 var attack_content_size = parseInt(new Uint16Array(arrayBuffer, 2, 1));
                 var attack_content = new Uint8Array(arrayBuffer, 4);
                 console.log("attack_state=" + attack_state + "; attack_type=" + attack_type + "; attack_count_size=" + attack_content_size);
-                var status = "ERROR: Cannot parse attack state.";
                 hideAllSections();
                 switch(attack_state) {
                     case AttackStateEnum.READY:
@@ -110,145 +611,191 @@
                         showResult("TIMEOUT", attack_type, attack_content_size, attack_content);
                         break;
                     default:
-                        document.getElementById("errors").innerHTML = "Error loading attack status! Unknown state.";
+                        showError("Error loading attack status! Unknown state.");
                 }
                 return;
-                
             }
         };
         oReq.onerror = function() {
             console.log("Request error");
-            document.getElementById("errors").innerHTML = "Cannot reach ESP32. Check that you are connected to management AP. You might get disconnected during attack.";
-            getStatus();
+            showError("Cannot reach ESP32. Check that you are connected to management AP. You might get disconnected during attack.");
+            setTimeout(getStatus, 3000);
         };
         oReq.ontimeout = function() {
             console.log("Request timeout");
-            getStatus();  
+            setTimeout(getStatus, 2000);
         };
         oReq.open("GET", "http://192.168.4.1/status", true);
         oReq.responseType = "arraybuffer";
         oReq.send();
     }
+    
     function hideAllSections(){
-        for(let section of document.getElementsByTagName("section")){
-            section.style.display = "none";
-        };
+        document.querySelectorAll('section').forEach(section => {
+            section.classList.add('hidden');
+        });
     }
+    
     function showRunning(){
         hideAllSections();
-        document.getElementById("running").style.display = "block";
+        document.getElementById("running").classList.remove('hidden');
     }
+    
     function countProgress(){
         if(time_elapsed >= attack_timeout){
-            document.getElementById("errors").innerHTML = "Please reconnect to management AP";
-            document.getElementById("errors").style.display = "block";
+            showError("Attack timeout reached. Please reconnect to management AP.");
             clearInterval(running_poll);
         }
+        var percentage = (time_elapsed / attack_timeout) * 100;
+        document.getElementById("progress-fill").style.width = percentage + "%";
         document.getElementById("running-progress").innerHTML = time_elapsed + "/" + attack_timeout + "s";
         time_elapsed++;
     }
+    
     function showAttackConfig(){
-        document.getElementById("ready").style.display = "block";
-        refreshAps();
+        hideAllSections();
+        document.getElementById("ready").classList.remove('hidden');
+        if(document.querySelector('#ap-list tbody').children.length === 0) {
+            refreshAps();
+        }
     }
+    
     function showResult(status, attack_type, attack_content_size, attack_content){
         hideAllSections();
         clearInterval(poll);
         document.getElementById("result").innerHTML = defaultResultContent;
-        document.getElementById("result").style.display = "block";
-        document.getElementById("result-meta").innerHTML = status + "<br>";
-        type = "ERROR: Cannot parse attack type.";
+        document.getElementById("result").classList.remove('hidden');
+        
+        var statusBadge = "";
+        if(status === "FINISHED") {
+            statusBadge = '<span class="badge badge-success">' + status + '</span>';
+        } else if(status === "TIMEOUT") {
+            statusBadge = '<span class="badge badge-warning">' + status + '</span>';
+        }
+        
+        var typeName = "UNKNOWN";
         switch(attack_type) {
             case AttackTypeEnum.ATTACK_TYPE_PASSIVE:
-                type = "ATTACK_TYPE_PASSIVE";
+                typeName = "Passive Monitoring";
                 break;
             case AttackTypeEnum.ATTACK_TYPE_HANDSHAKE:
-                type = "ATTACK_TYPE_HANDSHAKE";
+                typeName = "Handshake Capture";
                 resultHandshake(attack_content, attack_content_size);
                 break;
             case AttackTypeEnum.ATTACK_TYPE_PMKID:
-                type = "ATTACK_TYPE_PMKID";
+                typeName = "PMKID Attack";
                 resultPmkid(attack_content, attack_content_size);
                 break;
             case AttackTypeEnum.ATTACK_TYPE_DOS:
-                type = "ATTACK_TYPE_DOS";
+                typeName = "Denial of Service";
                 break;
-            default:
-                type = "UNKNOWN";
         }
-        document.getElementById("result-meta").innerHTML += type + "<br>";
+        
+        document.getElementById("result-meta").innerHTML = statusBadge + ' <span class="badge badge-info">' + typeName + '</span>';
     }
+    
     function refreshAps() {
-        document.getElementById("ap-list").innerHTML = "Loading (this may take a while)...";
+        var tbody = document.querySelector('#ap-list tbody');
+        tbody.innerHTML = '<tr><td colspan="3" class="loading"><div class="spinner"></div>Scanning networks... This may take a while</td></tr>';
+        
         var oReq = new XMLHttpRequest();
         oReq.onload = function() {
-            document.getElementById("ap-list").innerHTML = "<th>SSID</th><th>BSSID</th><th>RSSI</th>";
+            tbody.innerHTML = "";
             var arrayBuffer = oReq.response;
             if(arrayBuffer) {
                 var byteArray = new Uint8Array(arrayBuffer);
-                for  (let i = 0; i < byteArray.byteLength; i = i + 40) {
+                var apCount = 0;
+                for (let i = 0; i < byteArray.byteLength; i = i + 40) {
                     var tr = document.createElement('tr');
                     tr.setAttribute("id", i / 40);
                     tr.setAttribute("onClick", "selectAp(this)");
+                    
                     var td_ssid = document.createElement('td');
-                    var td_rssi = document.createElement('td');
                     var td_bssid = document.createElement('td');
-                    td_ssid.innerHTML = new TextDecoder("utf-8").decode(byteArray.subarray(i + 0, i + 32));
-                    tr.appendChild(td_ssid);
+                    var td_rssi = document.createElement('td');
+                    
+                    var ssid = new TextDecoder("utf-8").decode(byteArray.subarray(i + 0, i + 32)).replace(/\0/g, '');
+                    td_ssid.innerHTML = ssid || '<em style="color: #999;">(Hidden Network)</em>';
+                    
+                    var bssid = "";
                     for(let j = 0; j < 6; j++){
-                        td_bssid.innerHTML += uint8ToHex(byteArray[i + 33 + j]) + ":";
+                        bssid += uint8ToHex(byteArray[i + 33 + j]);
+                        if(j < 5) bssid += ":";
                     }
+                    td_bssid.innerHTML = '<code>' + bssid + '</code>';
+                    td_bssid.style.fontFamily = 'monospace';
+                    
+                    var rssi = byteArray[i + 39] - 255;
+                    var signalBars = "";
+                    if(rssi > -50) signalBars = "[####]";
+                    else if(rssi > -60) signalBars = "[###]";
+                    else if(rssi > -70) signalBars = "[##]";
+                    else signalBars = "[#]";
+                    td_rssi.innerHTML = signalBars + " " + rssi + " dBm";
+                    
+                    tr.appendChild(td_ssid);
                     tr.appendChild(td_bssid);
-                    td_rssi.innerHTML = byteArray[i + 39] - 255;
                     tr.appendChild(td_rssi);
-                    document.getElementById("ap-list").appendChild(tr);
+                    tbody.appendChild(tr);
+                    apCount++;
                 }
+                showSuccess("Found " + apCount + " networks");
             }
         };
         oReq.onerror = function() {
-            document.getElementById("ap-list").innerHTML = "ERROR";
+            tbody.innerHTML = '<tr><td colspan="3" class="loading" style="color: var(--danger-color);">Error scanning networks</td></tr>';
+            showError("Failed to scan networks. Please try again.");
         };
         oReq.open("GET", "http://192.168.4.1/ap-list", true);
         oReq.responseType = "arraybuffer";
         oReq.send();
     }
+    
     function selectAp(el) {
-        console.log(el.id);
+        console.log("Selected AP:", el.id);
         if(selectedApElement != -1){
-            selectedApElement.classList.remove("selected")
+            selectedApElement.classList.remove("selected");
         }
-        selectedApElement=el;
+        selectedApElement = el;
         el.classList.add("selected");
+        showSuccess("Target selected: " + el.children[0].textContent);
     }
+    
     function runAttack() {
         if(selectedApElement == -1){
             console.log("No AP selected. Attack not started.");
-            document.getElementById("errors").innerHTML = "No AP selected. Attack not started.";
+            showError("Please select a target network first.");
             return;
         }
         hideAllSections();
-        document.getElementById("running").style.display = "block";
+        document.getElementById("running").classList.remove('hidden');
+        
         var arrayBuffer = new ArrayBuffer(4);
         var uint8Array = new Uint8Array(arrayBuffer);
         uint8Array[0] = parseInt(selectedApElement.id);
         uint8Array[1] = parseInt(document.getElementById("attack_type").value);
         uint8Array[2] = parseInt(document.getElementById("attack_method").value);
         uint8Array[3] = parseInt(document.getElementById("attack_timeout").value);
+        
         var oReq = new XMLHttpRequest();
         oReq.open("POST", "http://192.168.4.1/run-attack", true);
         oReq.send(arrayBuffer);
+        
         getStatus();
         attack_timeout = parseInt(document.getElementById("attack_timeout").value);
         time_elapsed = 0;
         running_poll = setInterval(countProgress, running_poll_interval);
     }
+    
     function resetAttack(){
         hideAllSections();
         showAttackConfig();
         var oReq = new XMLHttpRequest();
         oReq.open("HEAD", "http://192.168.4.1/reset", true);
         oReq.send();
+        showSuccess("System reset. Ready for new attack.");
     }
+    
     function resultPmkid(attack_content, attack_content_size){
         var mac_ap = "";
         var mac_sta = "";
@@ -256,58 +803,119 @@
         var ssid_text = "";
         var pmkid = "";
         var index = 0;
+        
         for(let i = 0; i < 6; i = i + 1) {
             mac_ap += uint8ToHex(attack_content[index + i]);
         }
         index = index + 6;
+        
         for(let i = 0; i < 6; i = i + 1) {
             mac_sta += uint8ToHex(attack_content[index + i]);
         }
         index = index + 6;
+        
         for(let i = 0; i < attack_content[index]; i = i + 1) {
             ssid += uint8ToHex(attack_content[index + 1 + i]);
             ssid_text += String.fromCharCode(attack_content[index + 1 + i]);
         }
         index = index + attack_content[index] + 1;
-        var pmkid_cnt = 0;
+        
+        var pmkids = [];
+        var current_pmkid = "";
         for(let i = 0; i < attack_content_size - index; i = i + 1) {
-            if((i % 16) == 0){
-                pmkid += "<br>";
-                pmkid += "</code>PMKID #" + pmkid_cnt + ": <code>";
-                pmkid_cnt += 1;
+            if((i % 16) == 0 && i > 0){
+                pmkids.push(current_pmkid);
+                current_pmkid = "";
             }
-            pmkid += uint8ToHex(attack_content[index + i]);
+            current_pmkid += uint8ToHex(attack_content[index + i]);
         }
-        document.getElementById("result-content").innerHTML = "";
-        document.getElementById("result-content").innerHTML += "MAC AP: <code>" + mac_ap + "</code><br>";
-        document.getElementById("result-content").innerHTML += "MAC STA: <code>" + mac_sta + "</code><br>";
-        document.getElementById("result-content").innerHTML += "(E)SSID: <code>" + ssid + "</code> (" + ssid_text + ")";
-        document.getElementById("result-content").innerHTML += "<code>" + pmkid + "</code><br>";
-        document.getElementById("result-content").innerHTML += "<br>Hashcat ready format:"
-        document.getElementById("result-content").innerHTML += "<code>" + pmkid + "*" + mac_ap + "*" + mac_sta  + "*" + ssid  + "</code><br>";
+        if(current_pmkid) pmkids.push(current_pmkid);
+        
+        var resultHtml = '<div class="info-grid">';
+        resultHtml += '<div class="info-item"><label>Access Point MAC</label><div class="value"><code>' + formatMac(mac_ap) + '</code></div></div>';
+        resultHtml += '<div class="info-item"><label>Station MAC</label><div class="value"><code>' + formatMac(mac_sta) + '</code></div></div>';
+        resultHtml += '<div class="info-item"><label>SSID</label><div class="value">' + (ssid_text || '<em>Hidden</em>') + '</div></div>';
+        resultHtml += '<div class="info-item"><label>PMKIDs Found</label><div class="value">' + pmkids.length + '</div></div>';
+        resultHtml += '</div>';
+        
+        if(pmkids.length > 0) {
+            resultHtml += '<h3 style="margin-top: 25px; margin-bottom: 15px;">Captured PMKIDs</h3>';
+            pmkids.forEach((pmkid, idx) => {
+                resultHtml += '<div class="result-card" style="background: #f8f9fa;">';
+                resultHtml += '<strong>PMKID #' + idx + ':</strong><br>';
+                resultHtml += '<code style="display: block; margin-top: 10px; word-break: break-all;">' + pmkid + '</code>';
+                resultHtml += '</div>';
+            });
+            
+            resultHtml += '<h3 style="margin-top: 25px; margin-bottom: 15px;">Hashcat Format</h3>';
+            resultHtml += '<div class="result-card" style="background: #2c3e50; color: #ecf0f1;">';
+            pmkids.forEach((pmkid) => {
+                resultHtml += '<code style="display: block; margin: 5px 0; word-break: break-all; color: #ecf0f1;">';
+                resultHtml += pmkid + '*' + mac_ap + '*' + mac_sta + '*' + ssid;
+                resultHtml += '</code>';
+            });
+            resultHtml += '</div>';
+            
+            resultHtml += '<div class="alert alert-info" style="display: block; margin-top: 20px;">';
+            resultHtml += '<strong>Next Steps:</strong><br>';
+            resultHtml += '1. Copy the Hashcat format above<br>';
+            resultHtml += '2. Save to a file (e.g., pmkid.txt)<br>';
+            resultHtml += '3. Run: <code>hashcat -m 16800 pmkid.txt wordlist.txt</code>';
+            resultHtml += '</div>';
+        } else {
+            resultHtml += '<div class="alert alert-error" style="display: block; margin-top: 20px;">';
+            resultHtml += 'No PMKIDs captured. Try increasing timeout or select a different target.';
+            resultHtml += '</div>';
+        }
+        
+        document.getElementById("result-content").innerHTML = resultHtml;
     }
+    
     function resultHandshake(attack_content, attack_content_size){
-        document.getElementById("result-content").innerHTML = "";
-        var pcap_link = document.createElement("a");
-        pcap_link.setAttribute("href", "capture.pcap");
-        pcap_link.text = "Download PCAP file";
-        var hccapx_link = document.createElement("a");
-        hccapx_link.setAttribute("href", "capture.hccapx");
-        hccapx_link.text = "Download HCCAPX file";
-        document.getElementById("result-content").innerHTML += "<p>" + pcap_link.outerHTML + "</p>";
-        document.getElementById("result-content").innerHTML += "<p>" + hccapx_link.outerHTML + "</p>";
-        var handshakes = "";
-        for(let i = 0; i < attack_content_size; i = i + 1) {
-            handshakes += uint8ToHex(attack_content[i]);
-            if(i % 50 == 49) {
-                handshakes += "\n";
+        var resultHtml = '<h3 style="margin-bottom: 15px;">Capture Files</h3>';
+        resultHtml += '<div class="download-links">';
+        resultHtml += '<a href="capture.pcap" download>Download PCAP<br><small>For Wireshark</small></a>';
+        resultHtml += '<a href="capture.hccapx" download>Download HCCAPX<br><small>For Hashcat</small></a>';
+        resultHtml += '</div>';
+        
+        resultHtml += '<div class="alert alert-info" style="display: block; margin-top: 20px;">';
+        resultHtml += '<strong>Next Steps:</strong><br>';
+        resultHtml += '1. Download the HCCAPX file<br>';
+        resultHtml += '2. Run: <code>hashcat -m 2500 capture.hccapx wordlist.txt</code><br>';
+        resultHtml += '3. Or analyze PCAP in Wireshark';
+        resultHtml += '</div>';
+        
+        if(attack_content_size > 0) {
+            resultHtml += '<h3 style="margin-top: 25px; margin-bottom: 15px;">Captured Data</h3>';
+            resultHtml += '<div class="info-item">';
+            resultHtml += '<label>Data Size</label>';
+            resultHtml += '<div class="value">' + attack_content_size + ' bytes</div>';
+            resultHtml += '</div>';
+            
+            var hexData = "";
+            for(let i = 0; i < attack_content_size && i < 500; i = i + 1) {
+                hexData += uint8ToHex(attack_content[i]) + " ";
+                if(i % 32 == 31) hexData += "\n";
             }
+            if(attack_content_size > 500) hexData += "\n... (truncated)";
+            
+            resultHtml += '<details style="margin-top: 15px;">';
+            resultHtml += '<summary style="cursor: pointer; font-weight: 600; padding: 10px; background: #f8f9fa; border-radius: 5px;">View Raw Data</summary>';
+            resultHtml += '<pre style="margin-top: 10px;"><code>' + hexData + '</code></pre>';
+            resultHtml += '</details>';
         }
-        document.getElementById("result-content").innerHTML += "<pre><code>" + handshakes + "</code></pre>";
+        
+        document.getElementById("result-content").innerHTML = resultHtml;
     }
+    
     function uint8ToHex(uint8){
         return ("00" + uint8.toString(16)).slice(-2);
     }
+    
+    function formatMac(macStr) {
+        return macStr.match(/.{2}/g).join(':').toUpperCase();
+    }
+    
     function updateConfigurableFields(el){
         document.getElementById("attack_method").outerHTML = defaultAttackMethods;
         switch(parseInt(el.value)){
@@ -317,29 +925,38 @@
             case AttackTypeEnum.ATTACK_TYPE_HANDSHAKE:
                 console.log("HANDSHAKE configuration");
                 document.getElementById("attack_timeout").value = 60;
-                setAttackMethods(["DEAUTH_ROGUE_AP (PASSIVE)", "DEAUTH_BROADCAST (ACTIVE)", "CAPTURE_ONLY (PASSIVE)"]);
+                setAttackMethods([
+                    "Rogue AP + Deauth (Passive)",
+                    "Broadcast Deauth (Active)",
+                    "Capture Only (Passive)"
+                ]);
                 break;
             case AttackTypeEnum.ATTACK_TYPE_PMKID:
                 console.log("PMKID configuration");
-                document.getElementById("attack_timeout").value = 5;
+                document.getElementById("attack_timeout").value = 10;
                 break;
             case AttackTypeEnum.ATTACK_TYPE_DOS:
                 console.log("DOS configuration");
                 document.getElementById("attack_timeout").value = 120;
-                setAttackMethods(["DEAUTH_ROGUE_AP (PASSIVE)", "DEAUTH_BROADCAST (ACTIVE)", "DEAUTH_COMBINE_ALL"]);
+                setAttackMethods([
+                    "Rogue AP + Deauth",
+                    "Broadcast Deauth",
+                    "Combined Attack"
+                ]);
                 break;
             default:
                 console.log("Unknown attack type");
                 break;
         }
     }
+    
     function setAttackMethods(attackMethodsArray){
         document.getElementById("attack_method").removeAttribute("disabled");
         attackMethodsArray.forEach(function(method, index){
             let option = document.createElement("option");
             option.value = index;
             option.text = method;
-            option.selected = true;
+            option.selected = (index === 0);
             document.getElementById("attack_method").appendChild(option);
         });
     }

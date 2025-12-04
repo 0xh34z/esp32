@@ -1,0 +1,41 @@
+menu "ESP32 Wi-Fi Penetration Tool Configuration"
+
+    config MGMT_AP_SSID
+        string "Management AP SSID"
+        default "tung tung tung sahur"
+        help
+            SSID for the management access point
+
+    config MGMT_AP_PASSWORD
+        string "Management AP Password"
+        default "skibidi123"
+        help
+            Password for the management access point (min 8 characters)
+
+    config MGMT_AP_MAX_CONNECTIONS
+        int "Maximum connections to Management AP"
+        default 4
+        range 1 10
+        help
+            Maximum number of clients that can connect to the management AP
+
+    config ATTACK_DEFAULT_TIMEOUT
+        int "Default attack timeout (seconds)"
+        default 60
+        range 10 300
+        help
+            Default timeout value for attacks in seconds
+
+    config ENABLE_DEBUG_UTILS
+        bool "Enable debug utilities"
+        default y
+        help
+            Enable debug utilities like memory tracking and hexdump
+
+    config WEB_MOUNT_POINT
+        string "Website mount point in SPIFFS"
+        default "/www"
+        help
+            Mount point for website files if using SPIFFS
+
+endmenu

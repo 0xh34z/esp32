@@ -13,6 +13,7 @@
 #define LOG_LOCAL_LEVEL ESP_LOG_DEBUG
 #include "esp_log.h"
 #include "esp_err.h"
+#include "lwip/def.h"
 #include "frame_analyzer.h"
 #include "frame_analyzer_types.h"
 #include "frame_analyzer_parser.h"

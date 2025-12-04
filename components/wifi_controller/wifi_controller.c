@@ -50,11 +50,20 @@ static void wifi_init_apsta(){
 
 void wifictl_ap_start(wifi_config_t *wifi_config) {
     ESP_LOGD(TAG, "Starting AP...");
+    if (wifi_config == NULL) {
+        ESP_LOGE(TAG, "wifi_config is NULL");
+        return;
+    }
+    
     if(!wifi_init){
         wifi_init_apsta();
     }
 
-    ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_AP, wifi_config));
+    esp_err_t ret = esp_wifi_set_config(WIFI_IF_AP, wifi_config);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to set AP config: %s", esp_err_to_name(ret));
+        return;
+    }
     ESP_LOGI(TAG, "AP started with SSID=%s", wifi_config->ap.ssid);
 }
 
@@ -65,7 +74,7 @@ void wifictl_ap_stop(){
             .max_connection = 0
         },
     };
-    ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_AP, &wifi_config));
+    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_AP, &wifi_config));
     ESP_LOGD(TAG, "AP stopped");
 }
 
@@ -84,6 +93,11 @@ void wifictl_mgmt_ap_start(){
 
 void wifictl_sta_connect_to_ap(const wifi_ap_record_t *ap_record, const char password[]){
     ESP_LOGD(TAG, "Connecting STA to AP...");
+    if (ap_record == NULL) {
+        ESP_LOGE(TAG, "ap_record is NULL");
+        return;
+    }
+    
     if(!wifi_init){
         wifi_init_apsta();
     }
@@ -108,9 +122,16 @@ void wifictl_sta_connect_to_ap(const wifi_ap_record_t *ap_record, const char pas
 
     ESP_LOGD(TAG, ".ssid=%s", sta_wifi_config.sta.ssid);
 
-    ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &sta_wifi_config));
-    ESP_ERROR_CHECK(esp_wifi_connect());
-
+    esp_err_t ret = esp_wifi_set_config(WIFI_IF_STA, &sta_wifi_config);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to set STA config: %s", esp_err_to_name(ret));
+        return;
+    }
+    
+    ret = esp_wifi_connect();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to connect: %s", esp_err_to_name(ret));
+    }
 }
 
 void wifictl_sta_disconnect(){

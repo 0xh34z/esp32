@@ -118,8 +118,21 @@ static httpd_uri_t uri_ap_list_get = {
  * @{
  */
 static esp_err_t uri_run_attack_post_handler(httpd_req_t *req) {
+    if (req->content_len != sizeof(attack_request_t)) {
+        ESP_LOGE(TAG, "Invalid request size: expected %d, got %d", sizeof(attack_request_t), req->content_len);
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid request size");
+        return ESP_FAIL;
+    }
+    
     attack_request_t attack_request;
-    httpd_req_recv(req, (char *)&attack_request, sizeof(attack_request_t));
+    int ret = httpd_req_recv(req, (char *)&attack_request, sizeof(attack_request_t));
+    if (ret <= 0) {
+        if (ret == HTTPD_SOCK_ERR_TIMEOUT) {
+            httpd_resp_send_408(req);
+        }
+        return ESP_FAIL;
+    }
+    
     esp_err_t res = httpd_resp_send(req, NULL, 0);
     ESP_ERROR_CHECK(esp_event_post(WEBSERVER_EVENTS, WEBSERVER_EVENT_ATTACK_REQUEST, &attack_request, sizeof(attack_request_t), portMAX_DELAY));
     return res;
@@ -216,9 +229,16 @@ void webserver_run(){
     ESP_LOGD(TAG, "Running webserver");
 
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+    config.max_uri_handlers = 8;
+    config.stack_size = 8192;
     httpd_handle_t server = NULL;
 
-    ESP_ERROR_CHECK(httpd_start(&server, &config));
+    esp_err_t ret = httpd_start(&server, &config);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to start webserver: %s", esp_err_to_name(ret));
+        return;
+    }
+    
     ESP_ERROR_CHECK(httpd_register_uri_handler(server, &uri_root_get));
     ESP_ERROR_CHECK(httpd_register_uri_handler(server, &uri_reset_head));
     ESP_ERROR_CHECK(httpd_register_uri_handler(server, &uri_ap_list_get));
@@ -226,4 +246,6 @@ void webserver_run(){
     ESP_ERROR_CHECK(httpd_register_uri_handler(server, &uri_status_get));
     ESP_ERROR_CHECK(httpd_register_uri_handler(server, &uri_capture_pcap_get));
     ESP_ERROR_CHECK(httpd_register_uri_handler(server, &uri_capture_hccapx_get));
+    
+    ESP_LOGI(TAG, "Webserver started successfully");
 }

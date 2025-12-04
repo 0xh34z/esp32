@@ -14,6 +14,7 @@
 #define ATTACK_H
 
 #include "esp_wifi_types.h"
+#include "esp_err.h"
 
 /**
  * @brief Implemented attack types that can be chosen.
@@ -99,5 +100,21 @@ char *attack_alloc_result_content(unsigned size);
  * @param size size of the new data to be appended
  */
 void attack_append_status_content(uint8_t *buffer, unsigned size);
+
+/**
+ * @brief Save current attack results to NVS flash storage.
+ * 
+ * Persists results so they survive WiFi disconnections and can be retrieved later.
+ * @return esp_err_t ESP_OK on success
+ */
+esp_err_t attack_save_results_to_flash();
+
+/**
+ * @brief Load last attack results from NVS flash storage.
+ * 
+ * Retrieves previously saved results from flash memory.
+ * @return esp_err_t ESP_OK on success
+ */
+esp_err_t attack_load_results_from_flash();
 
 #endif
